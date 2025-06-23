@@ -52,6 +52,8 @@ class RevenueRequest(BaseModel):
     industry: str
     has_email_marketing: bool
     has_sms_marketing: bool
+    current_email_revenue: Optional[float] = 0
+    current_sms_revenue: Optional[float] = 0
 
 class RevenueResponse(BaseModel):
     current_monthly: float
