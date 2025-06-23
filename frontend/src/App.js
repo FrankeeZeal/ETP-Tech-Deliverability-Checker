@@ -351,31 +351,62 @@ const DeliverabilityChecker = () => {
                   return (
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Estimated Delivery Rate</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-300">Estimated Delivery Rate</span>
+                          <Tooltip text="This is your current email deliverability score. Industry average is 85-95%. Lower scores mean more emails end up in spam folders or aren't delivered at all, directly reducing your email marketing revenue.">
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </Tooltip>
+                        </div>
                         <span className={`font-semibold ${getScoreColor(results.overall_score)}`}>
                           {results.overall_score}%
                         </span>
                       </div>
+                      
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Potential Lost Emails/Month</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-300">Email Performance Gap</span>
+                          <Tooltip text={`Based on your ${results.overall_score}% delivery rate vs. the industry benchmark of 90-95%, you're missing ${(95 - results.overall_score)}% potential reach. This gap represents emails that should reach the inbox but don't due to deliverability issues.`}>
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </Tooltip>
+                        </div>
                         <span className="text-red-400 font-semibold">
-                          {valueLoss.lostEmails.toLocaleString()}
+                          {Math.max(0, 95 - results.overall_score)}% loss
                         </span>
                       </div>
+                      
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Potential Monthly Revenue Loss</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-300">Potential Monthly Revenue Loss</span>
+                          <Tooltip text={`Calculated based on industry data: average e-commerce business sends ~50,000 emails/month with $0.42 revenue per delivered email. Your ${results.overall_score}% delivery rate means ${(100 - results.overall_score)}% revenue loss from poor deliverability.`}>
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </Tooltip>
+                        </div>
                         <span className="text-red-400 font-semibold">
                           ${valueLoss.monthlyLoss.toLocaleString()}
                         </span>
                       </div>
+                      
                       <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mt-4">
                         <div className="text-center">
-                          <p className="text-red-300 font-semibold mb-2">Annual Revenue at Risk</p>
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <p className="text-red-300 font-semibold">Annual Revenue at Risk</p>
+                            <Tooltip text="This represents the total yearly revenue you could be losing due to deliverability issues. Improving your score to 90%+ industry standard could recover most of this lost revenue through better inbox placement.">
+                              <svg className="w-4 h-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </Tooltip>
+                          </div>
                           <p className="text-3xl font-bold text-red-400">
                             ${valueLoss.annualLoss.toLocaleString()}
                           </p>
                           <p className="text-red-200 text-sm mt-2">
-                            Based on industry average email value of $0.42 per email
+                            Based on industry benchmarks for e-commerce email marketing
                           </p>
                         </div>
                       </div>
