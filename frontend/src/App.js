@@ -441,9 +441,14 @@ const DeliverabilityChecker = () => {
                     Our team specializes in email deliverability optimization. We can implement these recommendations 
                     and help you recover the lost revenue within 2-4 weeks.
                   </p>
-                  <button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105">
+                  <a 
+                    href="https://www.etptech.com/contact" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-cyan-500/25"
+                  >
                     Get Expert Help
-                  </button>
+                  </a>
                 </div>
               </div>
             )}
