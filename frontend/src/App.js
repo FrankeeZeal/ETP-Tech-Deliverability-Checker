@@ -73,11 +73,15 @@ const DeliverabilityChecker = () => {
   const [domain, setDomain] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [results, setResults] = React.useState(null);
+  const [animatedScore, setAnimatedScore] = React.useState(0);
 
   const checkDeliverability = async () => {
     if (!domain) return;
     
     setLoading(true);
+    setResults(null);
+    setAnimatedScore(0);
+    
     try {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/check-deliverability`, {
         method: 'POST',
@@ -88,6 +92,21 @@ const DeliverabilityChecker = () => {
       });
       const data = await response.json();
       setResults(data);
+      
+      // Animate score counter
+      let current = 0;
+      const target = data.overall_score;
+      const increment = target / 50;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          setAnimatedScore(target);
+          clearInterval(timer);
+        } else {
+          setAnimatedScore(Math.floor(current));
+        }
+      }, 30);
+      
     } catch (error) {
       console.error('Error checking deliverability:', error);
     }
@@ -106,6 +125,161 @@ const DeliverabilityChecker = () => {
     return 'from-red-400 to-pink-500';
   };
 
+  const getScoreGradient = (score) => {
+    if (score >= 80) return 'bg-gradient-to-r from-green-400 to-emerald-500';
+    if (score >= 60) return 'bg-gradient-to-r from-yellow-400 to-orange-500';
+    return 'bg-gradient-to-r from-red-400 to-pink-500';
+  };
+
+  const calculateValueLoss = (score) => {
+    // Calculate potential monthly email volume and value loss
+    const baseEmailVolume = 50000; // Assume 50k emails per month for calculation
+    const deliveryLossPercentage = (100 - score) / 100;
+    const lostEmails = Math.floor(baseEmailVolume * deliveryLossPercentage);
+    const valuePerEmail = 0.42; // Industry average email value
+    const monthlyLoss = Math.floor(lostEmails * valuePerEmail);
+    const annualLoss = monthlyLoss * 12;
+    
+    return {
+      lostEmails,
+      monthlyLoss,
+      annualLoss,
+      deliveryRate: 100 - (deliveryLossPercentage * 100)
+    };
+  };
+
+  const CircularProgress = ({ percentage, size = 120, strokeWidth = 8, color = "cyan" }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (percentage / 100) * circumference;
+    
+    const colorClass = color === "cyan" ? "stroke-cyan-400" : 
+                      color === "green" ? "stroke-green-400" :
+                      color === "yellow" ? "stroke-yellow-400" : "stroke-red-400";
+
+    return (
+      <div className="relative">
+        <svg width={size} height={size} className="transform -rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            className="text-slate-700"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            className={`${colorClass} transition-all duration-1000 ease-out`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-2xl font-bold ${getScoreColor(percentage)}`}>
+            {Math.round(percentage)}%
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const InteractiveCheckCard = ({ check, index }) => {
+    const [expanded, setExpanded] = React.useState(false);
+    
+    return (
+      <div className={`bg-slate-800/50 backdrop-blur-sm border rounded-xl p-6 transition-all duration-300 hover:shadow-lg transform hover:scale-105 ${
+        check.passed ? 'border-green-500/30 hover:border-green-400' : 'border-red-500/30 hover:border-red-400'
+      }`}>
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              check.passed ? 'bg-green-500' : 'bg-red-500'
+            }`}>
+              {check.passed ? 
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg> :
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              }
+            </div>
+            <h3 className="text-lg font-semibold text-white">{check.name}</h3>
+          </div>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <svg className={`w-5 h-5 transform transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        
+        <p className="text-gray-400 text-sm mb-3">{check.description}</p>
+        <p className={`text-sm font-medium ${check.passed ? 'text-green-400' : 'text-red-400'}`}>
+          {check.result}
+        </p>
+        
+        {expanded && (
+          <div className="mt-4 pt-4 border-t border-slate-600 animate-fadeInUp">
+            <div className="text-sm text-gray-300">
+              {!check.passed && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-3">
+                  <p className="text-red-300 font-semibold mb-2">Impact of Missing {check.name}:</p>
+                  <ul className="text-red-200 text-xs space-y-1">
+                    {check.name.includes('MX') && (
+                      <>
+                        <li>• Emails cannot be delivered to your domain</li>
+                        <li>• Complete failure of email communication</li>
+                        <li>• Potential revenue loss: 100% of email marketing</li>
+                      </>
+                    )}
+                    {check.name.includes('SPF') && (
+                      <>
+                        <li>• 15-30% of emails may be marked as spam</li>
+                        <li>• Reduced sender reputation over time</li>
+                        <li>• Potential revenue loss: $500-2000/month</li>
+                      </>
+                    )}
+                    {check.name.includes('DKIM') && (
+                      <>
+                        <li>• 10-25% delivery rate reduction</li>
+                        <li>• Higher spam folder placement</li>
+                        <li>• Potential revenue loss: $300-1500/month</li>
+                      </>
+                    )}
+                    {check.name.includes('DMARC') && (
+                      <>
+                        <li>• 5-15% delivery rate reduction</li>
+                        <li>• Vulnerability to email spoofing</li>
+                        <li>• Potential revenue loss: $200-800/month</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              )}
+              {check.passed && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                  <p className="text-green-300 font-semibold mb-1">✓ Properly Configured</p>
+                  <p className="text-green-200 text-xs">This configuration helps maintain optimal email deliverability and sender reputation.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
       <div className="container mx-auto px-6 py-12">
@@ -114,7 +288,7 @@ const DeliverabilityChecker = () => {
             Email Deliverability Checker
           </h1>
           <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-            Enter your domain to analyze your email setup and get actionable recommendations to improve deliverability.
+            Analyze your email setup and discover how much revenue you might be losing due to deliverability issues.
           </p>
         </div>
 
@@ -127,14 +301,20 @@ const DeliverabilityChecker = () => {
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="Enter your domain (e.g., yourstore.com)"
-                className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-200"
+                onKeyPress={(e) => e.key === 'Enter' && checkDeliverability()}
               />
               <button
                 onClick={checkDeliverability}
                 disabled={loading || !domain}
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:hover:scale-100"
               >
-                {loading ? 'Checking...' : 'Check Health'}
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Checking...
+                  </div>
+                ) : 'Check Health'}
               </button>
             </div>
           </div>
@@ -142,53 +322,128 @@ const DeliverabilityChecker = () => {
 
         {/* Results Section */}
         {results && (
-          <div className="max-w-4xl mx-auto">
-            {/* Overall Score */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 mb-8">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-6">Deliverability Health Score</h2>
-                <div className={`w-32 h-32 mx-auto rounded-full bg-gradient-to-br ${getScoreBg(results.overall_score)} flex items-center justify-center mb-6`}>
-                  <span className="text-3xl font-bold text-white">{results.overall_score}</span>
+          <div className="max-w-6xl mx-auto">
+            {/* Overall Score with Value Loss */}
+            <div className="grid md:grid-cols-2 gap-8 mb-8">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white mb-6">Deliverability Health Score</h2>
+                  <div className="flex justify-center mb-6">
+                    <CircularProgress 
+                      percentage={animatedScore} 
+                      size={140} 
+                      strokeWidth={10}
+                      color={results.overall_score >= 80 ? "green" : results.overall_score >= 60 ? "yellow" : "red"}
+                    />
+                  </div>
+                  <p className={`text-xl font-semibold ${getScoreColor(results.overall_score)} mb-4`}>
+                    {results.overall_score >= 80 ? 'Excellent' : results.overall_score >= 60 ? 'Good' : 'Needs Improvement'}
+                  </p>
+                  <p className="text-gray-300">{results.summary}</p>
                 </div>
-                <p className={`text-xl font-semibold ${getScoreColor(results.overall_score)} mb-4`}>
-                  {results.overall_score >= 80 ? 'Excellent' : results.overall_score >= 60 ? 'Good' : 'Needs Improvement'}
-                </p>
-                <p className="text-gray-300">{results.summary}</p>
+              </div>
+
+              {/* Value Loss Analysis */}
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8">
+                <h2 className="text-2xl font-bold text-white mb-6">Revenue Impact Analysis</h2>
+                {(() => {
+                  const valueLoss = calculateValueLoss(results.overall_score);
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Estimated Delivery Rate</span>
+                        <span className={`font-semibold ${getScoreColor(results.overall_score)}`}>
+                          {results.overall_score}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Potential Lost Emails/Month</span>
+                        <span className="text-red-400 font-semibold">
+                          {valueLoss.lostEmails.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Potential Monthly Revenue Loss</span>
+                        <span className="text-red-400 font-semibold">
+                          ${valueLoss.monthlyLoss.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mt-4">
+                        <div className="text-center">
+                          <p className="text-red-300 font-semibold mb-2">Annual Revenue at Risk</p>
+                          <p className="text-3xl font-bold text-red-400">
+                            ${valueLoss.annualLoss.toLocaleString()}
+                          </p>
+                          <p className="text-red-200 text-sm mt-2">
+                            Based on industry average email value of $0.42 per email
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
-            {/* Detailed Results */}
+            {/* Interactive Detailed Results */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {results.checks.map((check, index) => (
-                <div key={index} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">{check.name}</h3>
-                    <div className={`w-3 h-3 rounded-full ${check.passed ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                  </div>
-                  <p className="text-gray-400 text-sm mb-3">{check.description}</p>
-                  <p className={`text-sm ${check.passed ? 'text-green-400' : 'text-red-400'}`}>
-                    {check.result}
-                  </p>
-                </div>
+                <InteractiveCheckCard key={index} check={check} index={index} />
               ))}
             </div>
 
-            {/* Recommendations */}
+            {/* Recommendations with Priority */}
             {results.recommendations.length > 0 && (
               <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8">
-                <h2 className="text-2xl font-bold text-white mb-6">Recommendations</h2>
-                <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-white mb-6">
+                  <span className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    Action Plan to Improve Deliverability
+                  </span>
+                </h2>
+                <div className="space-y-6">
                   {results.recommendations.map((rec, index) => (
-                    <div key={index} className="flex items-start gap-4">
-                      <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-white text-sm font-bold">{index + 1}</span>
-                      </div>
-                      <div>
-                        <h3 className="text-white font-semibold mb-2">{rec.title}</h3>
-                        <p className="text-gray-400">{rec.description}</p>
+                    <div key={index} className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-6 hover:border-orange-400/40 transition-all duration-300">
+                      <div className="flex items-start gap-4">
+                        <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                          <span className="text-white text-sm font-bold">{index + 1}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-white font-semibold">{rec.title}</h3>
+                            <span className="px-2 py-1 bg-orange-500/20 text-orange-300 text-xs rounded-full">
+                              High Priority
+                            </span>
+                          </div>
+                          <p className="text-gray-400 mb-3">{rec.description}</p>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-green-400">💰 Potential Recovery:</span>
+                            <span className="text-green-300 font-semibold">
+                              {rec.title.includes('SPF') ? '$500-2000/month' :
+                               rec.title.includes('DKIM') ? '$300-1500/month' :
+                               rec.title.includes('DMARC') ? '$200-800/month' :
+                               rec.title.includes('MX') ? 'All email revenue' : '$100-500/month'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
+                </div>
+                
+                <div className="mt-8 p-6 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl">
+                  <h3 className="text-cyan-300 font-semibold mb-2">🚀 Need Help Implementing These Fixes?</h3>
+                  <p className="text-gray-300 text-sm mb-4">
+                    Our team specializes in email deliverability optimization. We can implement these recommendations 
+                    and help you recover the lost revenue within 2-4 weeks.
+                  </p>
+                  <button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105">
+                    Get Expert Help
+                  </button>
                 </div>
               </div>
             )}
