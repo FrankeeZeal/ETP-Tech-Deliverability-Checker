@@ -888,7 +888,7 @@ const RevenueCalculator = () => {
                 {/* Annual Projection */}
                 <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-6">
                   <div className="text-center">
-                    <p className="text-green-300 font-semibold mb-2">Annual Revenue Potential</p>
+                    <p className="text-green-300 font-semibold mb-2">Annual Revenue Potential from Email & SMS Marketing</p>
                     <p className="text-3xl font-bold text-green-400">${results.annual_potential.toLocaleString()}</p>
                     <p className="text-green-200 text-sm mt-2">Based on {results.industry} industry benchmarks</p>
                   </div>
