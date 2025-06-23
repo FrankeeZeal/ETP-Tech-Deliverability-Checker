@@ -386,7 +386,7 @@ const RevenueCalculator = () => {
                         onChange={(e) => handleInputChange('hasSMSMarketing', e.target.checked)}
                         className="w-5 h-5 text-cyan-500 bg-slate-700 border-slate-600 rounded focus:ring-cyan-400 focus:ring-2"
                       />
-                      <spanClassName="ml-3 text-gray-300">I currently use SMS marketing</span>
+                      <span className="ml-3 text-gray-300">I currently use SMS marketing</span>
                     </label>
                     {formData.hasSMSMarketing && (
                       <div className="ml-8">
