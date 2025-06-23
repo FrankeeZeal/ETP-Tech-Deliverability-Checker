@@ -215,10 +215,11 @@ const RevenueCalculator = () => {
     industry: 'general',
     hasEmailMarketing: false,
     hasSMSMarketing: false,
-    emailListSize: '',
-    emailFrequency: 'weekly'
+    currentEmailRevenue: '',
+    currentSMSRevenue: ''
   });
   const [results, setResults] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
 
   const industries = {
     general: { name: 'General E-commerce', emailROI: 20, smsROI: 15 },
@@ -229,32 +230,53 @@ const RevenueCalculator = () => {
     food: { name: 'Food & Beverage', emailROI: 28, smsROI: 22 }
   };
 
-  const calculateRevenue = () => {
-    if (!formData.monthlyRevenue) return;
-
-    const monthlyRev = parseFloat(formData.monthlyRevenue);
-    const industry = industries[formData.industry];
+  const Tooltip = ({ text, children }) => {
+    const [show, setShow] = React.useState(false);
     
-    // Calculate potential revenue increases
-    const emailPotential = formData.hasEmailMarketing ? 
-      monthlyRev * (industry.emailROI / 100) * 0.3 : // 30% improvement if already using
-      monthlyRev * (industry.emailROI / 100); // Full potential if not using
+    return (
+      <div className="relative inline-block">
+        <div
+          onMouseEnter={() => setShow(true)}
+          onMouseLeave={() => setShow(false)}
+          className="cursor-help"
+        >
+          {children}
+        </div>
+        {show && (
+          <div className="absolute z-10 w-64 p-3 text-sm text-white bg-slate-800 border border-slate-600 rounded-lg shadow-lg -top-2 left-full ml-2">
+            <div className="absolute w-2 h-2 bg-slate-800 border-l border-t border-slate-600 transform rotate-45 -left-1 top-4"></div>
+            {text}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-    const smsPotential = formData.hasSMSMarketing ?
-      monthlyRev * (industry.smsROI / 100) * 0.3 :
-      monthlyRev * (industry.smsROI / 100);
-
-    const totalPotential = emailPotential + smsPotential;
-    const annualPotential = totalPotential * 12;
-
-    setResults({
-      current: monthlyRev,
-      emailPotential,
-      smsPotential,
-      totalMonthly: totalPotential,
-      totalAnnual: annualPotential,
-      industry: industry.name
-    });
+  const calculateRevenue = async () => {
+    if (!formData.monthlyRevenue) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/calculate-revenue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          monthly_revenue: parseFloat(formData.monthlyRevenue),
+          industry: formData.industry,
+          has_email_marketing: formData.hasEmailMarketing,
+          has_sms_marketing: formData.hasSMSMarketing,
+          current_email_revenue: parseFloat(formData.currentEmailRevenue) || 0,
+          current_sms_revenue: parseFloat(formData.currentSMSRevenue) || 0
+        }),
+      });
+      const data = await response.json();
+      setResults(data);
+    } catch (error) {
+      console.error('Error calculating revenue:', error);
+    }
+    setLoading(false);
   };
 
   const handleInputChange = (field, value) => {
@@ -272,7 +294,7 @@ const RevenueCalculator = () => {
             Revenue Calculator
           </h1>
           <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-            Discover your potential revenue increase with strategic email and SMS marketing campaigns.
+            Get accurate revenue projections based on your current performance and industry benchmarks.
           </p>
         </div>
 
@@ -283,7 +305,14 @@ const RevenueCalculator = () => {
             
             <div className="space-y-6">
               <div>
-                <label className="block text-white font-semibold mb-2">Monthly Revenue ($)</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-white font-semibold">Total Monthly Revenue ($)</label>
+                  <Tooltip text="Your total monthly revenue from all sources. This is used as the baseline to calculate marketing potential.">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </Tooltip>
+                </div>
                 <input
                   type="number"
                   value={formData.monthlyRevenue}
@@ -294,48 +323,100 @@ const RevenueCalculator = () => {
               </div>
 
               <div>
-                <label className="block text-white font-semibold mb-2">Industry</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-white font-semibold">Industry</label>
+                  <Tooltip text="Different industries have different email marketing performance benchmarks. Select your primary industry for accurate projections.">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </Tooltip>
+                </div>
                 <select
                   value={formData.industry}
                   onChange={(e) => handleInputChange('industry', e.target.value)}
                   className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                 >
                   {Object.entries(industries).map(([key, industry]) => (
-                    <option key={key} value={key}>{industry.name}</option>
+                    <option key={key} value={key}>
+                      {industry.name} (Email: {industry.emailROI}%, SMS: {industry.smsROI}%)
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-white font-semibold mb-3">Current Marketing</label>
-                <div className="space-y-3">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasEmailMarketing}
-                      onChange={(e) => handleInputChange('hasEmailMarketing', e.target.checked)}
-                      className="w-5 h-5 text-cyan-500 bg-slate-700 border-slate-600 rounded focus:ring-cyan-400 focus:ring-2"
-                    />
-                    <span className="ml-3 text-gray-300">I currently use email marketing</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasSMSMarketing}
-                      onChange={(e) => handleInputChange('hasSMSMarketing', e.target.checked)}
-                      className="w-5 h-5 text-cyan-500 bg-slate-700 border-slate-600 rounded focus:ring-cyan-400 focus:ring-2"
-                    />
-                    <span className="ml-3 text-gray-300">I currently use SMS marketing</span>
-                  </label>
+                <label className="block text-white font-semibold mb-3">Current Marketing Channels</label>
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.hasEmailMarketing}
+                        onChange={(e) => handleInputChange('hasEmailMarketing', e.target.checked)}
+                        className="w-5 h-5 text-cyan-500 bg-slate-700 border-slate-600 rounded focus:ring-cyan-400 focus:ring-2"
+                      />
+                      <span className="ml-3 text-gray-300">I currently use email marketing</span>
+                    </label>
+                    {formData.hasEmailMarketing && (
+                      <div className="ml-8">
+                        <div className="flex items-center gap-2 mb-2">
+                          <label className="text-sm text-gray-400">Current monthly email revenue ($)</label>
+                          <Tooltip text="How much revenue do you currently generate from email marketing per month? Be as accurate as possible for better projections.">
+                            <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </Tooltip>
+                        </div>
+                        <input
+                          type="number"
+                          value={formData.currentEmailRevenue}
+                          onChange={(e) => handleInputChange('currentEmailRevenue', e.target.value)}
+                          placeholder="e.g., 5000"
+                          className="w-full bg-slate-600 border border-slate-500 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.hasSMSMarketing}
+                        onChange={(e) => handleInputChange('hasSMSMarketing', e.target.checked)}
+                        className="w-5 h-5 text-cyan-500 bg-slate-700 border-slate-600 rounded focus:ring-cyan-400 focus:ring-2"
+                      />
+                      <spanClassName="ml-3 text-gray-300">I currently use SMS marketing</span>
+                    </label>
+                    {formData.hasSMSMarketing && (
+                      <div className="ml-8">
+                        <div className="flex items-center gap-2 mb-2">
+                          <label className="text-sm text-gray-400">Current monthly SMS revenue ($)</label>
+                          <Tooltip text="How much revenue do you currently generate from SMS marketing per month? Include all SMS-driven sales and conversions.">
+                            <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </Tooltip>
+                        </div>
+                        <input
+                          type="number"
+                          value={formData.currentSMSRevenue}
+                          onChange={(e) => handleInputChange('currentSMSRevenue', e.target.value)}
+                          placeholder="e.g., 2000"
+                          className="w-full bg-slate-600 border border-slate-500 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <button
                 onClick={calculateRevenue}
-                disabled={!formData.monthlyRevenue}
+                disabled={!formData.monthlyRevenue || loading}
                 className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
               >
-                Calculate Revenue Potential
+                {loading ? 'Calculating...' : 'Calculate Revenue Potential'}
               </button>
             </div>
           </div>
@@ -348,41 +429,105 @@ const RevenueCalculator = () => {
               <div className="space-y-6">
                 <div className="text-center">
                   <p className="text-gray-400 mb-2">Current Monthly Revenue</p>
-                  <p className="text-3xl font-bold text-white">${results.current.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-white">${results.current_monthly.toLocaleString()}</p>
                 </div>
 
-                <div className="border-t border-slate-600 pt-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Email Marketing Potential</span>
-                      <span className="text-cyan-400 font-semibold">+${results.emailPotential.toLocaleString()}/mo</span>
+                {/* Current Performance */}
+                {(results.current_email_revenue > 0 || results.current_sms_revenue > 0) && (
+                  <div className="border-t border-slate-600 pt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Current Marketing Performance</h3>
+                    <div className="space-y-2">
+                      {results.current_email_revenue > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-300">Current Email Revenue</span>
+                          <span className="text-cyan-400 font-semibold">${results.current_email_revenue.toLocaleString()}/mo</span>
+                        </div>
+                      )}
+                      {results.current_sms_revenue > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-300">Current SMS Revenue</span>
+                          <span className="text-orange-400 font-semibold">${results.current_sms_revenue.toLocaleString()}/mo</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">SMS Marketing Potential</span>
-                      <span className="text-orange-400 font-semibold">+${results.smsPotential.toLocaleString()}/mo</span>
+                  </div>
+                )}
+
+                {/* Potential Increases */}
+                <div className="border-t border-slate-600 pt-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Additional Revenue Potential</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-300">Email Marketing</span>
+                        <Tooltip text={results.calculation_breakdown.explanation.email}>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </Tooltip>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-cyan-400 font-semibold">+${results.email_potential.toLocaleString()}/mo</div>
+                        <div className="text-xs text-gray-400">
+                          Max: ${results.calculation_breakdown.max_potential.email.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-300">SMS Marketing</span>
+                        <Tooltip text={results.calculation_breakdown.explanation.sms}>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </Tooltip>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-orange-400 font-semibold">+${results.sms_potential.toLocaleString()}/mo</div>
+                        <div className="text-xs text-gray-400">
+                          Max: ${results.calculation_breakdown.max_potential.sms.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Total Potential */}
                 <div className="border-t border-slate-600 pt-6">
                   <div className="text-center">
-                    <p className="text-gray-400 mb-2">Total Monthly Increase</p>
-                    <p className="text-4xl font-bold text-green-400">+${results.totalMonthly.toLocaleString()}</p>
+                    <p className="text-gray-400 mb-2">Total Additional Monthly Revenue</p>
+                    <p className="text-4xl font-bold text-green-400">+${results.total_monthly_increase.toLocaleString()}</p>
                   </div>
                 </div>
 
+                {/* Annual Projection */}
                 <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-6">
                   <div className="text-center">
                     <p className="text-green-300 font-semibold mb-2">Annual Revenue Potential</p>
-                    <p className="text-3xl font-bold text-green-400">${results.totalAnnual.toLocaleString()}</p>
-                    <p className="text-green-200 text-sm mt-2">Based on {results.industry} industry averages</p>
+                    <p className="text-3xl font-bold text-green-400">${results.annual_potential.toLocaleString()}</p>
+                    <p className="text-green-200 text-sm mt-2">Based on {results.industry} industry benchmarks</p>
+                  </div>
+                </div>
+
+                {/* Calculation Details */}
+                <div className="bg-slate-700/50 rounded-xl p-4">
+                  <h4 className="text-white font-semibold mb-3">How We Calculate This</h4>
+                  <div className="text-sm text-gray-300 space-y-2">
+                    <p><strong>Industry Benchmarks ({results.industry}):</strong></p>
+                    <p>• Email Marketing: {results.calculation_breakdown.industry_benchmarks.email_roi_percent}% of total revenue</p>
+                    <p>• SMS Marketing: {results.calculation_breakdown.industry_benchmarks.sms_roi_percent}% of total revenue</p>
+                    <p className="pt-2"><strong>Your Potential:</strong></p>
+                    <p>• Email: ${results.calculation_breakdown.max_potential.email.toLocaleString()} maximum - ${results.calculation_breakdown.current_performance.email.toLocaleString()} current = ${results.email_potential.toLocaleString()} additional</p>
+                    <p>• SMS: ${results.calculation_breakdown.max_potential.sms.toLocaleString()} maximum - ${results.calculation_breakdown.current_performance.sms.toLocaleString()} current = ${results.sms_potential.toLocaleString()} additional</p>
                   </div>
                 </div>
 
                 <div className="bg-slate-700/50 rounded-xl p-4">
                   <p className="text-gray-300 text-sm">
-                    <strong className="text-white">Note:</strong> Results are estimates based on industry benchmarks. 
-                    Actual results may vary depending on implementation, audience, and execution quality.
+                    <strong className="text-white">Note:</strong> These projections are based on industry averages and your inputs. 
+                    Actual results depend on execution quality, audience engagement, and market conditions. 
+                    Start with email marketing for the highest ROI potential.
                   </p>
                 </div>
               </div>
