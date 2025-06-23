@@ -570,28 +570,6 @@ const RevenueCalculator = () => {
     food: { name: 'Food & Beverage', emailROI: 28, smsROI: 22 }
   };
 
-  const Tooltip = ({ text, children }) => {
-    const [show, setShow] = React.useState(false);
-    
-    return (
-      <div className="relative inline-block">
-        <div
-          onMouseEnter={() => setShow(true)}
-          onMouseLeave={() => setShow(false)}
-          className="cursor-help"
-        >
-          {children}
-        </div>
-        {show && (
-          <div className="absolute z-10 w-64 p-3 text-sm text-white bg-slate-800 border border-slate-600 rounded-lg shadow-lg -top-2 left-full ml-2">
-            <div className="absolute w-2 h-2 bg-slate-800 border-l border-t border-slate-600 transform rotate-45 -left-1 top-4"></div>
-            {text}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const calculateRevenue = async () => {
     if (!formData.monthlyRevenue) return;
     
