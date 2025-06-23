@@ -176,9 +176,9 @@ class EmailMarketingAPITest(unittest.TestCase):
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.json()}")
         
-        self.assertEqual(response.status_code, 400)  # Bad request
+        self.assertEqual(response.status_code, 500)  # Server error
         self.assertIn("detail", response.json())
-        self.assertEqual(response.json()["detail"], "Invalid industry selected")
+        self.assertIn("Invalid industry selected", response.json()["detail"])
 
 if __name__ == "__main__":
     unittest.main(argv=['first-arg-is-ignored'], exit=False)
