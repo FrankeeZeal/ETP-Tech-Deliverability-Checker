@@ -546,20 +546,13 @@ const Navigation = () => {
   return (
     <nav className="bg-slate-900/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
       <div className="container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">E</span>
-            </div>
-            <span className="text-white font-bold text-xl">EMBRACE</span>
-          </Link>
-          
-          <div className="flex space-x-6">
+        <div className="flex items-center justify-center">
+          <div className="flex space-x-8">
             <Link
               to="/"
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                 location.pathname === '/' 
-                  ? 'bg-cyan-500 text-white' 
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
                   : 'text-gray-300 hover:text-white hover:bg-slate-700'
               }`}
             >
@@ -567,9 +560,9 @@ const Navigation = () => {
             </Link>
             <Link
               to="/deliverability"
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                 location.pathname === '/deliverability' 
-                  ? 'bg-cyan-500 text-white' 
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/25' 
                   : 'text-gray-300 hover:text-white hover:bg-slate-700'
               }`}
             >
@@ -577,9 +570,9 @@ const Navigation = () => {
             </Link>
             <Link
               to="/calculator"
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 ${
                 location.pathname === '/calculator' 
-                  ? 'bg-orange-500 text-white' 
+                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/25' 
                   : 'text-gray-300 hover:text-white hover:bg-slate-700'
               }`}
             >
