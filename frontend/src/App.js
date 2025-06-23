@@ -717,6 +717,13 @@ const RevenueCalculator = () => {
                         <div className="text-xs text-gray-400">
                           Max: ${results.calculation_breakdown.max_potential.email.toLocaleString()}
                         </div>
+                        {results.email_potential > 0 && (
+                          <div className="text-xs text-cyan-300 mt-1">
+                            {!formData.hasEmailMarketing ? 
+                              "By implementing email marketing" : 
+                              "By optimizing current email setup"}
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -734,10 +741,69 @@ const RevenueCalculator = () => {
                         <div className="text-xs text-gray-400">
                           Max: ${results.calculation_breakdown.max_potential.sms.toLocaleString()}
                         </div>
+                        {results.sms_potential > 0 && (
+                          <div className="text-xs text-orange-300 mt-1">
+                            {!formData.hasSMSMarketing ? 
+                              "By implementing SMS marketing" : 
+                              "By optimizing current SMS setup"}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Action Required Section */}
+                {(results.email_potential > 0 || results.sms_potential > 0) && (
+                  <div className="border-t border-slate-600 pt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">🎯 How to Achieve This Revenue</h3>
+                    <div className="space-y-3">
+                      {results.email_potential > 0 && (
+                        <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 className="text-cyan-300 font-semibold mb-2">
+                                Email Marketing: +${results.email_potential.toLocaleString()}/month
+                              </h4>
+                              <p className="text-cyan-100 text-sm">
+                                {!formData.hasEmailMarketing ? 
+                                  "Start sending targeted email campaigns, automated welcome series, abandoned cart recovery, and product recommendations." :
+                                  "Optimize your current email strategy with better segmentation, personalization, and automated flows to reach industry benchmarks."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {results.sms_potential > 0 && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h4 className="text-orange-300 font-semibold mb-2">
+                                SMS Marketing: +${results.sms_potential.toLocaleString()}/month
+                              </h4>
+                              <p className="text-orange-100 text-sm">
+                                {!formData.hasSMSMarketing ? 
+                                  "Launch SMS campaigns for flash sales, order updates, abandoned cart recovery, and exclusive offers to your subscriber base." :
+                                  "Enhance your SMS strategy with better timing, personalized messaging, and advanced automation to maximize conversion rates."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Total Potential */}
                 <div className="border-t border-slate-600 pt-6">
