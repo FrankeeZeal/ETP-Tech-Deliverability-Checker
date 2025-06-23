@@ -1,75 +1,322 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import re
+import dns.resolver
+import socket
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, validator
+from typing import Optional, List, Dict
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List
-import uuid
-from datetime import datetime
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+app = FastAPI(title="Email Marketing Deliverability & Revenue Calculator API")
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
-
-# Create the main app without a prefix
-app = FastAPI()
-
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
-
-
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
-
-# Include the router in the main app
-app.include_router(api_router)
-
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Pydantic models
+class DeliverabilityRequest(BaseModel):
+    domain: str
+    
+    @validator('domain')
+    def validate_domain(cls, v):
+        if not v:
+            raise ValueError('Domain is required')
+        # Remove protocol and trailing slash if present
+        domain = re.sub(r'^https?://', '', v)
+        domain = domain.rstrip('/')
+        # Basic domain validation
+        domain_pattern = r'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}\.?)*[a-zA-Z]{2,}$'
+        if not re.match(domain_pattern, domain):
+            raise ValueError('Invalid domain format')
+        return domain
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+class DeliverabilityResponse(BaseModel):
+    domain: str
+    overall_score: int
+    summary: str
+    checks: List[Dict]
+    recommendations: List[Dict]
+
+class RevenueRequest(BaseModel):
+    monthly_revenue: float
+    industry: str
+    has_email_marketing: bool
+    has_sms_marketing: bool
+
+class RevenueResponse(BaseModel):
+    current_monthly: float
+    email_potential: float
+    sms_potential: float
+    total_monthly_increase: float
+    annual_potential: float
+    industry: str
+
+# Helper functions for deliverability checks
+def check_mx_record(domain: str) -> Dict:
+    """Check if domain has MX records"""
+    try:
+        mx_records = dns.resolver.resolve(domain, 'MX')
+        return {
+            'name': 'MX Record Check',
+            'description': 'Verifies that your domain can receive emails',
+            'passed': len(mx_records) > 0,
+            'result': f'Found {len(mx_records)} MX record(s)' if mx_records else 'No MX records found'
+        }
+    except Exception as e:
+        return {
+            'name': 'MX Record Check',
+            'description': 'Verifies that your domain can receive emails',
+            'passed': False,
+            'result': f'Error checking MX records: {str(e)}'
+        }
+
+def check_spf_record(domain: str) -> Dict:
+    """Check SPF record"""
+    try:
+        txt_records = dns.resolver.resolve(domain, 'TXT')
+        spf_found = False
+        spf_record = ""
+        
+        for record in txt_records:
+            record_str = str(record).strip('"')
+            if record_str.startswith('v=spf1'):
+                spf_found = True
+                spf_record = record_str
+                break
+        
+        return {
+            'name': 'SPF Record Check',
+            'description': 'Sender Policy Framework helps prevent email spoofing',
+            'passed': spf_found,
+            'result': f'SPF record found: {spf_record[:50]}...' if spf_found else 'No SPF record found'
+        }
+    except Exception as e:
+        return {
+            'name': 'SPF Record Check',
+            'description': 'Sender Policy Framework helps prevent email spoofing',
+            'passed': False,
+            'result': f'Error checking SPF record: {str(e)}'
+        }
+
+def check_dkim_record(domain: str) -> Dict:
+    """Check for common DKIM selectors"""
+    common_selectors = ['default', 'google', 'k1', 'k2', 'mail', 'dkim', 'selector1', 'selector2']
+    dkim_found = False
+    
+    for selector in common_selectors:
+        try:
+            dkim_domain = f"{selector}._domainkey.{domain}"
+            dns.resolver.resolve(dkim_domain, 'TXT')
+            dkim_found = True
+            break
+        except:
+            continue
+    
+    return {
+        'name': 'DKIM Record Check',
+        'description': 'DomainKeys Identified Mail provides email authentication',
+        'passed': dkim_found,
+        'result': 'DKIM record found' if dkim_found else 'No common DKIM selectors found'
+    }
+
+def check_dmarc_record(domain: str) -> Dict:
+    """Check DMARC record"""
+    try:
+        dmarc_domain = f"_dmarc.{domain}"
+        txt_records = dns.resolver.resolve(dmarc_domain, 'TXT')
+        dmarc_found = False
+        dmarc_record = ""
+        
+        for record in txt_records:
+            record_str = str(record).strip('"')
+            if record_str.startswith('v=DMARC1'):
+                dmarc_found = True
+                dmarc_record = record_str
+                break
+        
+        return {
+            'name': 'DMARC Record Check',
+            'description': 'Domain-based Message Authentication helps with email authentication',
+            'passed': dmarc_found,
+            'result': f'DMARC record found: {dmarc_record[:50]}...' if dmarc_found else 'No DMARC record found'
+        }
+    except Exception as e:
+        return {
+            'name': 'DMARC Record Check',
+            'description': 'Domain-based Message Authentication helps with email authentication',
+            'passed': False,
+            'result': f'Error checking DMARC record: {str(e)}'
+        }
+
+def check_domain_reputation(domain: str) -> Dict:
+    """Basic domain reputation check"""
+    try:
+        # Try to resolve the domain
+        socket.gethostbyname(domain)
+        return {
+            'name': 'Domain Resolution',
+            'description': 'Checks if the domain resolves properly',
+            'passed': True,
+            'result': 'Domain resolves successfully'
+        }
+    except Exception as e:
+        return {
+            'name': 'Domain Resolution',
+            'description': 'Checks if the domain resolves properly',
+            'passed': False,
+            'result': f'Domain resolution failed: {str(e)}'
+        }
+
+def generate_recommendations(checks: List[Dict]) -> List[Dict]:
+    """Generate recommendations based on failed checks"""
+    recommendations = []
+    
+    for check in checks:
+        if not check['passed']:
+            if 'MX Record' in check['name']:
+                recommendations.append({
+                    'title': 'Set up MX Records',
+                    'description': 'Configure MX records in your DNS settings to enable email receiving. Contact your DNS provider or hosting company for assistance.'
+                })
+            elif 'SPF' in check['name']:
+                recommendations.append({
+                    'title': 'Configure SPF Record',
+                    'description': 'Add an SPF record to your DNS (e.g., "v=spf1 include:_spf.google.com ~all" for Google Workspace) to prevent email spoofing.'
+                })
+            elif 'DKIM' in check['name']:
+                recommendations.append({
+                    'title': 'Set up DKIM Authentication',
+                    'description': 'Enable DKIM in your email service provider and add the DKIM record to your DNS settings for better email authentication.'
+                })
+            elif 'DMARC' in check['name']:
+                recommendations.append({
+                    'title': 'Implement DMARC Policy',
+                    'description': 'Create a DMARC record starting with "v=DMARC1; p=none;" to monitor email authentication and gradually strengthen your policy.'
+                })
+            elif 'Domain Resolution' in check['name']:
+                recommendations.append({
+                    'title': 'Fix Domain Resolution',
+                    'description': 'Ensure your domain is properly configured and accessible. Check with your domain registrar or DNS provider.'
+                })
+    
+    # Add general recommendations
+    if len([c for c in checks if c['passed']]) < len(checks):
+        recommendations.append({
+            'title': 'Regular Monitoring',
+            'description': 'Set up regular monitoring of your email deliverability metrics and DNS records to catch issues early.'
+        })
+    
+    return recommendations
+
+# API endpoints
+@app.get("/")
+async def root():
+    return {"message": "Email Marketing Deliverability & Revenue Calculator API"}
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy", "message": "API is running"}
+
+@app.post("/api/check-deliverability", response_model=DeliverabilityResponse)
+async def check_deliverability(request: DeliverabilityRequest):
+    """Check email deliverability for a domain"""
+    try:
+        domain = request.domain
+        logger.info(f"Checking deliverability for domain: {domain}")
+        
+        # Perform all checks
+        checks = [
+            check_mx_record(domain),
+            check_spf_record(domain),
+            check_dkim_record(domain),
+            check_dmarc_record(domain),
+            check_domain_reputation(domain)
+        ]
+        
+        # Calculate overall score
+        passed_checks = sum(1 for check in checks if check['passed'])
+        overall_score = int((passed_checks / len(checks)) * 100)
+        
+        # Generate summary
+        if overall_score >= 80:
+            summary = "Excellent! Your email setup looks great with strong authentication."
+        elif overall_score >= 60:
+            summary = "Good setup, but there are some areas for improvement."
+        else:
+            summary = "Your email setup needs attention to improve deliverability."
+        
+        # Generate recommendations
+        recommendations = generate_recommendations(checks)
+        
+        return DeliverabilityResponse(
+            domain=domain,
+            overall_score=overall_score,
+            summary=summary,
+            checks=checks,
+            recommendations=recommendations
+        )
+        
+    except Exception as e:
+        logger.error(f"Error checking deliverability: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error checking deliverability: {str(e)}")
+
+@app.post("/api/calculate-revenue", response_model=RevenueResponse)
+async def calculate_revenue(request: RevenueRequest):
+    """Calculate potential revenue from email and SMS marketing"""
+    try:
+        # Industry-specific ROI data (percentage of revenue)
+        industry_data = {
+            'general': {'email_roi': 20, 'sms_roi': 15, 'name': 'General E-commerce'},
+            'fashion': {'email_roi': 25, 'sms_roi': 20, 'name': 'Fashion & Apparel'},
+            'beauty': {'email_roi': 30, 'sms_roi': 25, 'name': 'Beauty & Cosmetics'},  
+            'electronics': {'email_roi': 18, 'sms_roi': 12, 'name': 'Electronics'},
+            'home': {'email_roi': 22, 'sms_roi': 16, 'name': 'Home & Garden'},
+            'food': {'email_roi': 28, 'sms_roi': 22, 'name': 'Food & Beverage'}
+        }
+        
+        if request.industry not in industry_data:
+            raise HTTPException(status_code=400, detail="Invalid industry selected")
+        
+        industry = industry_data[request.industry]
+        monthly_revenue = request.monthly_revenue
+        
+        # Calculate potential revenue increases
+        # If already using the channel, assume 30% improvement potential
+        # If not using, show full potential
+        email_potential = monthly_revenue * (industry['email_roi'] / 100)
+        if request.has_email_marketing:
+            email_potential *= 0.3  # 30% improvement if already using
+            
+        sms_potential = monthly_revenue * (industry['sms_roi'] / 100)
+        if request.has_sms_marketing:
+            sms_potential *= 0.3  # 30% improvement if already using
+        
+        total_monthly_increase = email_potential + sms_potential
+        annual_potential = total_monthly_increase * 12
+        
+        return RevenueResponse(
+            current_monthly=monthly_revenue,
+            email_potential=email_potential,
+            sms_potential=sms_potential,
+            total_monthly_increase=total_monthly_increase,
+            annual_potential=annual_potential,
+            industry=industry['name']
+        )
+        
+    except Exception as e:
+        logger.error(f"Error calculating revenue: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error calculating revenue: {str(e)}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
