@@ -323,6 +323,41 @@ const DeliverabilityChecker = () => {
         {/* Results Section */}
         {results && (
           <div className="max-w-6xl mx-auto">
+            {/* DKIM Warning Notice */}
+            {results.checks.some(check => check.name.includes('DKIM')) && (
+              <div className="mb-8 bg-amber-500/10 border border-amber-500/20 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-amber-300 font-semibold mb-2">🔧 DKIM Configuration Update</h3>
+                    <p className="text-amber-100 text-sm mb-3">
+                      We've recently improved our DKIM detection system to find more email provider configurations. 
+                      If you believe you have DKIM properly set up but it's showing as missing, please double-check your configuration.
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <a 
+                        href="https://mxtoolbox.com/dkim.aspx" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Verify DKIM on MXToolbox
+                      </a>
+                      <span className="text-amber-200 text-xs">
+                        Enter your domain and DKIM selector to verify
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Overall Score with Value Loss */}
             <div className="grid md:grid-cols-2 gap-8 mb-8">
               <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8">
