@@ -842,6 +842,22 @@ const RevenueCalculator = () => {
                     Start with email marketing for the highest ROI potential.
                   </p>
                 </div>
+
+                {/* Book a Call CTA */}
+                <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-6 text-center">
+                  <h3 className="text-purple-300 font-semibold mb-2">🚀 Ready to Achieve This Revenue Growth?</h3>
+                  <p className="text-gray-300 text-sm mb-4">
+                    Our email and SMS marketing experts can help you implement these strategies and achieve your revenue goals within 60-90 days.
+                  </p>
+                  <a 
+                    href="https://www.etptech.com/contact" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-purple-500/25"
+                  >
+                    Book a Strategy Call
+                  </a>
+                </div>
               </div>
             </div>
           )}
