@@ -57,11 +57,14 @@ class RevenueRequest(BaseModel):
 
 class RevenueResponse(BaseModel):
     current_monthly: float
+    current_email_revenue: float
+    current_sms_revenue: float
     email_potential: float
     sms_potential: float
     total_monthly_increase: float
     annual_potential: float
     industry: str
+    calculation_breakdown: Dict
 
 # Helper functions for deliverability checks
 def check_mx_record(domain: str) -> Dict:
