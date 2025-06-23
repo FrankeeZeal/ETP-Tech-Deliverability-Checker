@@ -316,28 +316,65 @@ async def calculate_revenue(request: RevenueRequest):
         
         industry = industry_data[request.industry]
         monthly_revenue = request.monthly_revenue
+        current_email_revenue = request.current_email_revenue or 0
+        current_sms_revenue = request.current_sms_revenue or 0
         
-        # Calculate potential revenue increases
-        # If already using the channel, assume 30% improvement potential
-        # If not using, show full potential
-        email_potential = monthly_revenue * (industry['email_roi'] / 100)
+        # Calculate theoretical maximum potential based on industry benchmarks
+        max_email_potential = monthly_revenue * (industry['email_roi'] / 100)
+        max_sms_potential = monthly_revenue * (industry['sms_roi'] / 100)
+        
+        # Calculate potential increase
         if request.has_email_marketing:
-            email_potential *= 0.3  # 30% improvement if already using
+            # If already using email marketing, potential is the difference between max and current
+            email_potential = max(0, max_email_potential - current_email_revenue)
+        else:
+            # If not using email marketing, show full potential
+            email_potential = max_email_potential
             
-        sms_potential = monthly_revenue * (industry['sms_roi'] / 100)
         if request.has_sms_marketing:
-            sms_potential *= 0.3  # 30% improvement if already using
+            # If already using SMS marketing, potential is the difference between max and current
+            sms_potential = max(0, max_sms_potential - current_sms_revenue)
+        else:
+            # If not using SMS marketing, show full potential
+            sms_potential = max_sms_potential
         
         total_monthly_increase = email_potential + sms_potential
         annual_potential = total_monthly_increase * 12
         
+        # Create detailed calculation breakdown
+        calculation_breakdown = {
+            'industry_benchmarks': {
+                'email_roi_percent': industry['email_roi'],
+                'sms_roi_percent': industry['sms_roi']
+            },
+            'max_potential': {
+                'email': max_email_potential,
+                'sms': max_sms_potential
+            },
+            'current_performance': {
+                'email': current_email_revenue,
+                'sms': current_sms_revenue
+            },
+            'improvement_potential': {
+                'email': email_potential,
+                'sms': sms_potential
+            },
+            'explanation': {
+                'email': f"Based on {industry['name']} industry average of {industry['email_roi']}% revenue from email marketing",
+                'sms': f"Based on {industry['name']} industry average of {industry['sms_roi']}% revenue from SMS marketing"
+            }
+        }
+        
         return RevenueResponse(
             current_monthly=monthly_revenue,
+            current_email_revenue=current_email_revenue,
+            current_sms_revenue=current_sms_revenue,
             email_potential=email_potential,
             sms_potential=sms_potential,
             total_monthly_increase=total_monthly_increase,
             annual_potential=annual_potential,
-            industry=industry['name']
+            industry=industry['name'],
+            calculation_breakdown=calculation_breakdown
         )
         
     except Exception as e:
