@@ -107,27 +107,33 @@ user_problem_statement: "Build a beautiful web app that allows e-commerce store 
 backend:
   - task: "Email Deliverability Checker API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
           comment: "Implemented deliverability checker with DNS record validation (MX, SPF, DKIM, DMARC), domain reputation check, scoring system and recommendations engine"
+        - working: true
+          agent: "testing"
+          comment: "API endpoint /api/check-deliverability works correctly. Successfully validates domain format, performs DNS checks (MX, SPF, DKIM, DMARC), calculates overall score, and provides recommendations. Tested with valid domain (google.com) and invalid domain format."
 
   - task: "Revenue Calculator API" 
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
           agent: "main"
           comment: "Implemented revenue calculator with industry-specific ROI data, handles existing marketing channel adjustments"
+        - working: true
+          agent: "testing"
+          comment: "API endpoint /api/calculate-revenue works correctly. Successfully calculates potential revenue based on industry-specific ROI data. Tested with different industries (fashion, general, beauty, electronics) and with/without existing marketing channels. Minor issue: Returns 500 error instead of 400 for invalid industry."
 
 frontend:
   - task: "Multi-page React App with Routing"
