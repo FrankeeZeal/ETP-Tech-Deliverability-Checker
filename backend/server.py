@@ -109,24 +109,46 @@ def check_spf_record(domain: str) -> Dict:
         }
 
 def check_dkim_record(domain: str) -> Dict:
-    """Check for common DKIM selectors"""
-    common_selectors = ['default', 'google', 'k1', 'k2', 'mail', 'dkim', 'selector1', 'selector2']
+    """Check for DKIM selectors - comprehensive check"""
+    # Expanded list of common DKIM selectors
+    common_selectors = [
+        'default', 'google', 'k1', 'k2', 'mail', 'dkim', 'selector1', 'selector2',
+        'key1', 'key2', 'smtp', 'email', 'mailgun', 'mandrill', 'sendgrid',
+        'amazonses', 'sparkpost', 'postmark', 'mailchimp', 'constantcontact',
+        'campaignmonitor', 'klaviyo', 'brevo', 'sendinblue', 'mailjet',
+        'elastic', 'dkim1', 'dkim2', 's1', 's2', 'mxvault'
+    ]
+    
     dkim_found = False
+    found_selector = None
+    dkim_record = ""
     
     for selector in common_selectors:
         try:
             dkim_domain = f"{selector}._domainkey.{domain}"
-            dns.resolver.resolve(dkim_domain, 'TXT')
-            dkim_found = True
-            break
-        except:
+            records = dns.resolver.resolve(dkim_domain, 'TXT')
+            for record in records:
+                record_str = str(record).strip('"')
+                if 'p=' in record_str:  # DKIM records contain public key with p= parameter
+                    dkim_found = True
+                    found_selector = selector
+                    dkim_record = record_str[:100] + "..." if len(record_str) > 100 else record_str
+                    break
+            if dkim_found:
+                break
+        except Exception:
             continue
+    
+    if dkim_found:
+        result = f'DKIM record found (selector: {found_selector}): {dkim_record}'
+    else:
+        result = 'No DKIM records found with common selectors. Consider checking your email service provider documentation for the correct DKIM selector.'
     
     return {
         'name': 'DKIM Record Check',
-        'description': 'DomainKeys Identified Mail provides email authentication',
+        'description': 'DomainKeys Identified Mail provides email authentication and helps prevent spoofing',
         'passed': dkim_found,
-        'result': 'DKIM record found' if dkim_found else 'No common DKIM selectors found'
+        'result': result
     }
 
 def check_dmarc_record(domain: str) -> Dict:
