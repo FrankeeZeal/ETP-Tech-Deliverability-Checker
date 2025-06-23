@@ -9,20 +9,11 @@ const HomePage = () => {
       {/* Hero Section */}
       <div className="container mx-auto px-6 py-12">
         <div className="text-center mb-16">
-          <div className="mb-8">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center transform hover:scale-105 transition-transform">
-              <div className="text-white font-bold text-2xl">E</div>
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-              EMBRACE
-            </h1>
-            <p className="text-orange-400 text-xl font-semibold tracking-wider">
-              THE POTENTIAL
-            </p>
-          </div>
-          
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Maximize Your E-commerce Email Marketing
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
+            Email Marketing
+          </h1>
+          <h2 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 to-orange-400 bg-clip-text text-transparent mb-6">
+            Optimization Suite
           </h2>
           <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto mb-12">
             Check your email deliverability health, get actionable recommendations, 
@@ -33,8 +24,8 @@ const HomePage = () => {
         {/* Tool Cards */}
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           <Link to="/deliverability" className="group">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:border-cyan-400 transition-all duration-300 transform hover:scale-105">
-              <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center mb-6 group-hover:shadow-lg group-hover:shadow-cyan-400/25">
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:border-cyan-400 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
+              <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center mb-6 group-hover:shadow-lg group-hover:shadow-cyan-400/25 transition-all duration-300">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -53,8 +44,8 @@ const HomePage = () => {
           </Link>
 
           <Link to="/calculator" className="group">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:border-orange-400 transition-all duration-300 transform hover:scale-105">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center mb-6 group-hover:shadow-lg group-hover:shadow-orange-400/25">
+            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8 hover:border-orange-400 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-orange-500/20">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center mb-6 group-hover:shadow-lg group-hover:shadow-orange-400/25 transition-all duration-300">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
